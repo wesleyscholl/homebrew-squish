@@ -1,40 +1,28 @@
 class Squish < Formula
-  desc "Run 70B language models on a MacBook — memory-mapped INT8 inference via Apple MLX"
-  homepage "https://wesleyscholl.github.io/squish"
-  url "https://github.com/wesleyscholl/squish/archive/refs/tags/v1.0.1.tar.gz"
-  sha256 "fdcf43e456e9b128f924a81f454c7a925c103201268697683a4ecdc7a4a9ff14"
-  license "MIT"
-  head "https://github.com/wesleyscholl/squish.git", branch: "main"
+  include Language::Python::Virtualenv
 
-  depends_on "python@3.12"
+  desc "Local LLM server for Apple Silicon — paged KV cache, INT3 support"
+  homepage "https://github.com/konjoai/squish"
+  url "https://files.pythonhosted.org/packages/46/f1/9dc04a4fc50e7a9b01b57fb340d1b99b98a426b0181fecd7e6667612ed25/squish_ai-9.32.0.tar.gz"
+  sha256 "cdcbd32949b60caf7f30a44a3a2bd67598090c28376af4c4b6b303927ef41b02"
+  license "BUSL-1.1"
+
+  depends_on arch: :arm64
   depends_on :macos
-  depends_on arch: :arm64    # Apple Silicon (M1–M5) required
 
-  def install
-    venv = virtualenv_create(libexec, "python3.12")
-    venv.pip_install_and_link buildpath
-    bin.install_symlink libexec/"bin/squish"
-    bin.install_symlink libexec/"bin/squish-server"
-    bin.install_symlink libexec/"bin/squish-convert"
+  def python3
+    which("python3.13") || which("python3.12") || which("python3.11") || which("python3.10") || which("python3")
   end
 
-  def caveats
-    <<~EOS
-      Squish requires Apple Silicon (M1 or later) and macOS 13 Ventura+.
-      Models are stored in ~/.squish/models/ by default.
-
-      Get started:
-        squish pull qwen3:8b
-        squish serve qwen3:8b
-
-      OpenAI-compatible API:
-        curl http://localhost:11435/v1/chat/completions \\
-          -H "Content-Type: application/json" \\
-          -d '{"model":"qwen3:8b","messages":[{"role":"user","content":"Hello!"}]}'
-    EOS
+  def install
+    py = python3
+    virtualenv_create(libexec, py)
+    system libexec/"bin/pip", "install", "--upgrade", "pip"
+    system libexec/"bin/pip", "install", "squish-ai==#{version}"
+    bin.install_symlink Dir["#{libexec}/bin/squish*"]
   end
 
   test do
-    assert_match "squish 1.0.1", shell_output("#{bin}/squish --version")
+    assert_match version.to_s, shell_output("#{bin}/squish --version")
   end
 end
